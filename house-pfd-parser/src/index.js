@@ -3,7 +3,7 @@
 
 const fs = require('fs')
 
-global.DOMParser = require('./lib/domparsermock.js').DOMParserMock
+global.DOMParser = require('../lib/domparsermock.js').DOMParserMock
 
 const pdfjsLib = require('pdfjs-dist')
 const createTables = require('./createTables')
@@ -36,6 +36,10 @@ function processFiling(pdfPath, outPath, noContentPath) {
 }
 
 const run = (filePath, outPath, noContentPath) => {
+	// TODO: create folders if don't exist.
+	if (!fs.existsSync('./data/input')) {
+		fs.mkdirSync('./data/input', { recursive: true, });
+	}
 	const noContentCSV = `${outPath}no-content.csv`
 	fs.appendFileSync(noContentCSV, `File\n`)
 
@@ -53,11 +57,11 @@ const run = (filePath, outPath, noContentPath) => {
 	})
 }
 
-;(() => {
-	process.argv
-	run(
-		process.argv[2] || `${__dirname}/data/input/`,
-		process.argv[3] || `${__dirname}/data/output/`,
-		process.argv[4] || `${__dirname}/data/no_content/`
-	)
-})()
+	; (() => {
+		process.argv
+		run(
+			process.argv[2] || `data/input/`, /* `${__dirname}/data/input/` */
+			process.argv[3] || `data/output/`,
+			process.argv[4] || `data/no_content/`
+		)
+	})()
