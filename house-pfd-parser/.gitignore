@@ -97,3 +97,7 @@ typings/
 
 # Node Modules
 /node_modules
+
+
+/lib
+/build

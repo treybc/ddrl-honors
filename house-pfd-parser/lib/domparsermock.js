@@ -2,11 +2,11 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
 // Dummy XML Parser
-
+/*
 function DOMNodeMock(nodeName, nodeValue) {
   this.nodeName = nodeName;
   this.nodeValue = nodeValue;
-  Object.defineProperty(this, 'parentNode', {value: null, writable: true});
+  Object.defineProperty(this, 'parentNode', { value: null, writable: true });
 }
 DOMNodeMock.prototype = {
   get firstChild() {
@@ -20,22 +20,30 @@ DOMNodeMock.prototype = {
     if (!this.childNodes) {
       return this.nodeValue || '';
     }
-    return this.childNodes.map(function (child) {
-      return child.textContent;
-    }).join('');
+    return this.childNodes
+      .map(function (child) {
+        return child.textContent;
+      })
+      .join('');
   },
   hasChildNodes: function () {
     return this.childNodes && this.childNodes.length > 0;
-  }
+  },
 };
 
 function decodeXML(text) {
   if (text.indexOf('&') < 0) {
     return text;
   }
-  return text.replace(/&(#(x[0-9a-f]+|\d+)|\w+);/gi, function (all, entityName, number) {
+  return text.replace(/&(#(x[0-9a-f]+|\d+)|\w+);/gi, function (
+    all,
+    entityName,
+    number,
+  ) {
     if (number) {
-      return String.fromCharCode(number[0] === 'x' ? parseInt(number.substring(1), 16) : +number);
+      return String.fromCharCode(
+        number[0] === 'x' ? parseInt(number.substring(1), 16) : +number,
+      );
     }
     switch (entityName) {
       case 'amp':
@@ -45,15 +53,15 @@ function decodeXML(text) {
       case 'gt':
         return '>';
       case 'quot':
-        return '\"';
+        return '"';
       case 'apos':
-        return '\'';
+        return "'";
     }
     return '&' + entityName + ';';
   });
 }
 
-function DOMParserMock() {};
+function DOMParserMock() {}
 DOMParserMock.prototype = {
   parseFromString: function (content) {
     content = content.replace(/<\?[\s\S]*?\?>|<!--[\s\S]*?-->/g, '').trim();
@@ -67,7 +75,10 @@ DOMParserMock.prototype = {
       }
       return '>' + i + ',<';
     });
-    content = content.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, function (all, text) {
+    content = content.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, function (
+      all,
+      text,
+    ) {
       var i = nodes.length;
       var node = new DOMNodeMock('#text', text);
       nodes.push(node);
@@ -76,30 +87,32 @@ DOMParserMock.prototype = {
     var lastLength;
     do {
       lastLength = nodes.length;
-      content = content.replace(/<([\w\:]+)((?:[\s\w:=]|'[^']*'|"[^"]*")*)(?:\/>|>([\d,]*)<\/[^>]+>)/g,
+      content = content.replace(
+        /<([\w\:]+)((?:[\s\w:=]|'[^']*'|"[^"]*")*)(?:\/>|>([\d,]*)<\/[^>]+>)/g,
         function (all, name, attrs, content) {
-        var i = nodes.length;
-        var node = new DOMNodeMock(name);
-        var children = [];
-        if (content) {
-          content = content.split(',');
-          content.pop();
-          content.forEach(function (child) {
-            var childNode = nodes[+child];
-            childNode.parentNode = node;
-            children.push(childNode);
-          })
-        }
-        node.childNodes = children;
-        nodes.push(node);
-        return i + ',';
-
-      });
-    } while(lastLength < nodes.length);
+          var i = nodes.length;
+          var node = new DOMNodeMock(name);
+          var children = [];
+          if (content) {
+            content = content.split(',');
+            content.pop();
+            content.forEach(function (child) {
+              var childNode = nodes[+child];
+              childNode.parentNode = node;
+              children.push(childNode);
+            });
+          }
+          node.childNodes = children;
+          nodes.push(node);
+          return i + ',';
+        },
+      );
+    } while (lastLength < nodes.length);
     return {
-      documentElement: nodes.pop()
+      documentElement: nodes.pop(),
     };
-  }
+  },
 };
 
 exports.DOMParserMock = DOMParserMock;
+*/
