@@ -52,7 +52,8 @@ const run = async (filePath: string, outPath: string) => {
 (() => {
   /*process.argv;*/
   run(
-    process.argv[2] || `../data/input/` /* `${__dirname}/data/input/` */,
+    process.argv[2] ||
+      `../data/raw_disclosures/` /* `${__dirname}/data/input/` */,
     process.argv[3] || `../data/parsed_disclosures/`,
   ).then(() => {
     console.log('done');
