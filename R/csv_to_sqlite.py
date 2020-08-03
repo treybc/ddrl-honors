@@ -34,7 +34,7 @@ def convert(
 ):
     if isinstance(filepath_or_fileobj, string_types):
         if compression is None:
-            fo = open(filepath_or_fileobj, mode=read_mode)
+            fo = open(filepath_or_fileobj, mode=read_mode, errors="ignore")
         elif compression == "bz2":
             try:
                 fo = bz2.open(filepath_or_fileobj, mode=read_mode)
@@ -47,6 +47,7 @@ def convert(
 
     try:
         dialect = csv.Sniffer().sniff(fo.readline())
+        dialect.doublequote = True
     except TypeError:
         dialect = csv.Sniffer().sniff(str(fo.readline()))
     fo.seek(0)
@@ -108,9 +109,14 @@ def convert(
         ",".join(["?"] * len(headers)),
     )
 
+    print(
+        "here we go! There are about 63 million rows in contribDB; printing every 100,000"
+    )
     line = 0
     for row in reader:
         line += 1
+        if line % 100000 == 0:
+            print(line / 1000000, "million processed")
         if len(row) == 0:
             continue
         # we need to take out commas from int and floats for sqlite to
@@ -128,6 +134,7 @@ def convert(
             ]
             c.execute(_insert_tmpl, row)
         except ValueError as e:
+            print(row)
             print(
                 "Unable to convert value '%s' to type '%s' on line %d" % (x, y, line),
                 file=sys.stderr,
@@ -220,7 +227,7 @@ The database is created if it does not yet exist.
     )
     parser.add_argument(
         "--types",
-        type=list,
+        type=str,
         nargs="?",
         help="Types are read from this file, if provided.",
         default=None,
