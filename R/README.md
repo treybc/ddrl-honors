@@ -48,4 +48,13 @@ cands.2018 <- cands.all[cands.all$cycle==2018, ]
 dbWriteTable(con, 'candDB', cands.2018)
 ```
 
-After all this, we finally have all the 2018 data into `dime.sqlite3`.
+And finally clean up the contributions database a bit so the overall size is more
+manageable:
+
+```
+dbExecute(con, "DELETE FROM contribDB WHERE seat != 'federal:house'")
+dbExecute(con, "DELETE FROM contribDB WHERE `recipient.type` != 'CAND'")
+```
+
+After all this, we finally have all the 2018 data into `dime.sqlite3`, and can run
+`process_dime.R` to export the data we care about.

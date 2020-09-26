@@ -7,19 +7,12 @@ path <- 'D:/Desktop/work/ddrl_rdata/'
 ##Connecting to SQLite DB
 con <- dbConnect(RSQLite::SQLite(), paste0(path,"dime.sqlite3"))
 
-# load(paste(path, 'dime_recipients_all_1979_2018.rdata',sep=''))
-# # name of dataframe is cands.all 
-# cands.2018 <- cands.all[cands.all$cycle==2018, ]
-# dbWriteTable(con, 'candDB', cands.2018)
-
-# donors.2018 <- dbGetQuery(con2, "select * from donorDB where amount_2018 > 0")
-
 ##list tables
 dbListTables(con)
 
 ##show variables in candDB
-cand.vars.new <- dbGetQuery(con,"select * from candDB limit 10")
-print(cand.vars.new)
+cand.vars <- dbGetQuery(con,"select * from candDB limit 10")
+print(cand.vars)
 
 
 ##show variables in contribDB
@@ -32,11 +25,11 @@ disb.vars <- dbGetQuery(con,"select * from donorDB limit 10")
 print(disb.vars)
 
 
-###############################################################################
-##Example queries | recipient file
-###############################################################################
 
-cands <- dbGetQuery(con,"SELECT election, cycle, bonica_rid, 
+# Pull house candidate data for 2018
+# TODO: need to handle .s instead of _s in names
+cands <- dbGetQuery(con,"
+  SELECT election, cycle, bonica_rid, 
     name, lname, ffname, fname, mname, nname, title, suffix, cand_gender,
     party, state, seat, district, incum_chall,
     recipient_cfscore, dwnom1, recipient_type,
@@ -44,34 +37,74 @@ cands <- dbGetQuery(con,"SELECT election, cycle, bonica_rid,
     non_party_ind_exp_for, ind_exp_for, comm_cost_for, party_coord_exp,
     total_receipts, total_indiv_contrib, total_pac_contribs,
     ran_primary, ran_general, p_elec_stat, gen_elec_stat, gen_elect_pct, winner 
-    FROM candDB WHERE cycle == 2014 AND seat == 'federal:house'")
+  FROM candDB 
+  WHERE cycle == 2018 AND seat == 'federal:house'")
 
+# In addition to total raised, we want sum of contributions in primary only,
+# and sum of contributions in first 90 days of campaign.
+dbGetQuery(con, "
+  SELECT `bonica.rid`, SUM(amount) FROM contribDB 
+    WHERE `election.type` = 'P'
+    GROUP BY `bonica.rid`")
 
-##pull all california cands
-ca.cands <- dbGetQuery(con,"select * from candDB where state ='CA'")
+# First subset to list of candidates
+query <- "
+  SELECT rid, sum(amount) FROM
+    (SELECT * FROM
+      (SELECT `bonica.rid` as rid FROM candDB 
+        WHERE cycle == 2018 AND seat == 'federal:house') as cands
+      LEFT JOIN (select * from contribDB limit 10000) as contribdb
+      ON rid == contribDB.`bonica.rid`) as contribs
+  GROUP BY rid
+  LIMIT 10
+  "
+dbGetQuery(con, query)
 
-##pull all california cands running in 2014
-ca.cands.2014 <- dbGetQuery(con,"select * from candDB where state ='CA' and cycle == 2014")
+# Try to get first contribution date
+query <- "
+  CREATE TABLE IF NOT EXISTS campaign_dates AS
+    SELECT
+      rid,
+      sum(amount) as total_primary,
+      min(date) as campaign_start,
+      date(min(date), '90 days') as campaign_ninety
+    FROM
+      (
+        SELECT * FROM
+        (
+          SELECT `bonica.rid` as rid FROM candDB
+            WHERE cycle == 2018 AND seat == 'federal:house'
+        ) as cands
+        LEFT JOIN
+        (
+          select * from contribDB WHERE `election.type` = 'P'
+        ) as contribdb
+        ON rid == contribDB.`bonica.rid`
+      ) as contribs
+    GROUP BY rid
+  "
+dbExecute(con, query)
 
-##pull house california cands running in 2014
-ca.cands.2014.house <- dbGetQuery(con,"select * from candDB where cycle == 2014 and seat == 'federal:house'")
+# Now do it again and aggregate everything within the first ninety days.
+query <- "
+  SELECT * FROM 
+  (
+    SELECT
+      campaign_dates.*, sum(amount) as total_ninety
+    FROM
+      (
+        campaign_dates
+        LEFT JOIN
+        (
+          select * from contribDB WHERE `election.type` = 'P'
+        ) as contribdb
+        ON rid == contribDB.`bonica.rid` AND contribDB.date <= campaign_ninety
+      ) as contribs
+    GROUP BY rid
+  ) as contribs
+  LEFT JOIN candDB ON candDB.`bonica.rid` == contribs.rid
+  "
+candsWithTotals <- dbGetQuery(con, query)
 
-##pull pelosi
-pelosi.cands <- dbGetQuery(con,"select * from candDB where lname = 'pelosi'")
-
-###############################################################################
-##Example queries | contrib file
-###############################################################################
-by.last.name <- dbGetQuery(con,"select * from contribDB where contributor_lname = 'trump'")
-
-by.last.and.first.name <- dbGetQuery(con,"select * from contribDB where contributor_lname = 'trump' and contributor_fname ='donald'")
-
-by.cid <- dbGetQuery(con,"select * from contribDB where bonica_cid = 3110056714")
-
-stanford.donors <- dbGetQuery(con,"select * from contribDB where contributor_employer like 'stanford univ%'")
-
-by.gender <- dbGetQuery(con,"select contributor_gender, amount, bonica_cid, recipient_name from contribDB where cycle == 2014 and contributor_gender= 'F'")
-
-
-
-
+save(candsWithTotals, file=paste(path, 'candsWithTotals.rdata'))
+write.csv(candsWithTotals, paste(path, 'candsWithTotals.csv'))
