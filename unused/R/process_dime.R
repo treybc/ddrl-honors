@@ -38,7 +38,7 @@ cands <- dbGetQuery(con,"
     total_receipts, total_indiv_contrib, total_pac_contribs,
     ran_primary, ran_general, p_elec_stat, gen_elec_stat, gen_elect_pct, winner 
   FROM candDB 
-  WHERE cycle == 2018 AND seat == 'federal:house'")
+  WHERE cycle >= 2018 AND seat == 'federal:house'")
 
 # In addition to total raised, we want sum of contributions in primary only,
 # and sum of contributions in first 90 days of campaign.
