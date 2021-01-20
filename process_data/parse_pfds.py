@@ -65,7 +65,7 @@ def parse_exact_number(amount: str) -> int:
     """
     Parses a valid dollar-value string into a single number, or returns nan.
     """
-    # possible valid cases:
+    # possible valid cases are of these forms:
     # $.12
     # $12,400.23
     # $1.00
@@ -230,86 +230,6 @@ def parse_earned_income(row: pd.Series) -> pd.Series:
     return income_earned
 
 
-def get_candidate_set_old() -> DataFrame:
-    """
-    NB: this is the old get_candidate_set function from my summer work (now unused)
-    Return a dataframe containing the candidates for which we will parse financial data.
-    Must have Year and DocID fields.
-    """
-    # Read in Congressional Elections Dataset
-    election_df = pd.read_csv("dime_cong_elections_current.csv")
-
-    # Filter down candidates
-    filtered_df = election_df[election_df.candidate_inactive == 0]
-    print("Total active candidates: ", len(filtered_df))
-    filtered_df = filtered_df[filtered_df.seat == "federal:house"]
-    print("Total House candidates: ", len(filtered_df))
-    filtered_df = filtered_df[filtered_df.cycle == 2018]
-    print("2018 House candidates: ", len(filtered_df))
-
-    incumbents = filtered_df[filtered_df.Incum_Chall == "I"]
-
-    final_df = filtered_df[filtered_df.party == "D"]
-    print("2018 Democratic House candidates:", len(final_df))
-    final_df = final_df[final_df.num_prim_opps >= 6]
-    print(
-        "2018 Democratic House candidates in primaries with at least 6 candidates:",
-        len(final_df),
-    )
-    final_df = final_df[~final_df.district.isin(incumbents.district)]
-    print(
-        "2018 Democratic House candidates in primaries with at least 6 candidates and \
-            no incumbent:",
-        len(final_df),
-    )
-    final_df = final_df[final_df.total_receipts >= 5000]
-    print(
-        "2018 Democratic House candidates in primaries with at least 6 candidates and \
-            no incumbent who raised above reporting threshold:",
-        len(final_df),
-    )
-
-    final_df.sort_values("dcp", inplace=True)
-
-    # Read in financial disclosure form log
-    df_disclosures_2018 = pd.read_csv("2018FD.txt", delimiter="\t")
-    df_disclosures_2017 = pd.read_csv("2017FD.txt", delimiter="\t")
-    df_disclosures = pd.concat([df_disclosures_2018, df_disclosures_2017])
-    df_disclosures = df_disclosures.astype({"DocID": np.int32})
-    # We only want initial filings (probably)
-    df_disclosures = df_disclosures[df_disclosures["FilingType"] == "C"]
-
-    # Get matching last name fields
-    final_df["last"] = final_df.Name.str.split(",", 1).str[0]
-    df_disclosures["last"] = df_disclosures.Last.str.upper()
-
-    new_df = pd.merge(
-        final_df,
-        df_disclosures,
-        how="left",
-        left_on=["last", "district"],
-        right_on=["last", "StateDst"],
-    )
-
-    # TODO: California primary elections have some filing in 2016??
-    # In general, we want to be able to find everyone who raised over $5000.
-    # But for now we'll just drop the bad ones.
-    new_df = new_df[new_df.total_receipts >= 5000]
-    new_df = new_df.dropna(subset=["DocID"])
-    new_df = new_df.astype({"DocID": np.int32})
-
-    # Some people have two filings, one in 2017 and one in 2018. Keep the 2017 one.
-    # TODO: look at this more in detail
-    new_df.sort_values(["dcp", "Year"], inplace=True)
-    new_df.drop_duplicates(subset=["Name", "dcp"], inplace=True)
-
-    # Texas's 29th distrinct has 2 Garcias, so their data gets mixed up.
-    # Just drop it for now. TODO: don't do this; it's dumb.
-    new_df = new_df[new_df.district != "TX29"]
-
-    return new_df
-
-
 def get_candidate_set(years: List[int]) -> DataFrame:
     """
     Download the manifest files for the selected years from the House
@@ -448,15 +368,6 @@ def parse_disclosure_files() -> DataFrame:
     liabilities[["min_liability", "max_liability"]] = liabilities.apply(
         parse_liability, axis=1
     )
-    # for (string_range, values) in range_map.items():
-    #     liabilities.loc[
-    #         liabilities["amount-of-liability"] == string_range, "min_liability"
-    #     ] = values[0]
-    #     liabilities.loc[
-    #         liabilities["amount-of-liability"] == string_range, "max_liability"
-    #     ] = values[1]
-    #     assets.loc[assets["value-of-asset"] == string_range, "min_asset"] = values[0]
-    #     assets.loc[assets["value-of-asset"] == string_range, "max_asset"] = values[1]
 
     # Parse ranges for unearned income
     assets[["min_unearned_income", "max_unearned_income"]] = assets.apply(
@@ -470,7 +381,6 @@ def parse_disclosure_files() -> DataFrame:
     earned_income["income_earned"] = earned_income.apply(parse_earned_income, axis=1)
 
     # test for correctly mapping everything
-    print(assets[assets.min_asset.isna()].loc[:, assets.columns != "asset"])
     assert liabilities.min_liability.isna().sum() == 0
     assert liabilities.max_liability.isna().sum() == 0
     assert assets.min_asset.isna().sum() == 0

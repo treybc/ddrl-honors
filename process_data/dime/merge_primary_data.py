@@ -10,7 +10,7 @@ def download_primary_data():
     election_files = [
         "https://www.fec.gov/documents/1700/federalelections2014.xls",
         "https://www.fec.gov/documents/1890/federalelections2016.xlsx",
-        "https://www.fec.gov/documents/1897/federalelections2018.xlsx",
+        "https://www.fec.gov/documents/2706/federalelections2018.xlsx",
     ]
 
     df_primaries = None
@@ -42,6 +42,9 @@ def download_primary_data():
 
         df_year = df_year.dropna(subset=["Cand.ID"])
         df_year["Cand.ID"] = df_year["Cand.ID"].str.strip()
+        df_year["party"] = df_year["party"].str.strip()
+        # Minnesota's Dem party is officially the Democratic-Farmer-Labor party...
+        df_year.loc[df_year["party"] == "DFL", "party"] = "D"
         df_year = df_year[(df_year["party"] == "D") | (df_year["party"] == "R")]
 
         # A couple of manual fixes:

@@ -155,7 +155,7 @@ def create_crosswalk(df_manifest, df_dime):
                 & df_dime["ffname"].str.contains(row["first"], regex=False)
             ]
             if len(df_candidate_set) > 1 and row["cycle"] <= 2018:
-                if row.cucle != 2020:
+                if row.cycle != 2020:
                     too_many_match += 1
                 # TODO: matching for now so we can just look at missing; disambiguate later
                 result["rid"] = "dupe"  # df_candidate_set.iloc[0]["rid"]
@@ -196,7 +196,8 @@ def apply_crosswalk(df_crosswalk):
     df_final = pd.merge(
         df_crosswalk, pfd_final, how="right", left_on="pfd_id", right_on="file"
     )
-    # merge somehow the duplicate disclosures.
+    # up until this point, PFD has multiple disclosures for some candidate-cycles
+    # observations. We need to somehow merge these disclosures into one output.
     # TODO: currently keeping most recent filing; maybe do average or highest-information?
     df_final = df_final.sort_values(["pfd_id"]).drop_duplicates(
         subset=["rid", "cycle"], keep="last"
